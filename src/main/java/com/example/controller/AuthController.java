@@ -19,37 +19,52 @@ public class AuthController {
     }
 
     public String verifyToken(Request req, Response res) {
-        String idTokenString = req.body();
-        Map<String, String> tokenData = gson.fromJson(idTokenString, Map.class);
-        String token = tokenData.get("credential");
+        try {
+            String idTokenString = req.body();
+            Map<String, String> tokenData = gson.fromJson(idTokenString, Map.class);
+            String token = tokenData.get("credential");
 
-        GoogleIdToken.Payload payload = googleAuth.verify(token);
+            GoogleIdToken.Payload payload = googleAuth.verify(token);
 
-        if (payload != null) {
-            String userId = payload.getSubject();
-            String email = payload.getEmail();
-            String name = (String) payload.get("name");
+            if (payload != null) {
+                String userId = payload.getSubject();
+                String email = payload.getEmail();
+                String name = (String) payload.get("name");
 
-            req.session(true);
-            req.session().attribute("userId", userId);
-            req.session().attribute("email", email);
-            req.session().attribute("name", name);
+                req.session(true);
+                req.session().attribute("userId", userId);
+                req.session().attribute("email", email);
+                req.session().attribute("name", name);
 
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("userId", userId);
+                response.put("email", email);
+                response.put("name", name);
+
+                res.type("application/json");
+                return gson.toJson(response);
+            }
+
+            res.status(401);
             Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("userId", userId);
-            response.put("email", email);
-            response.put("name", name);
+            response.put("success", false);
+            response.put("error", "Invalid token");
+            return gson.toJson(response);
+        } catch (Exception e) {
+            System.err.println("=== Auth Verify Token Error ===");
+            System.err.println("Request Body: " + req.body());
+            System.err.println("Exception: " + e.getClass().getName());
+            System.err.println("Message: " + e.getMessage());
+            e.printStackTrace();
+            System.err.println("==============================");
 
-            res.type("application/json");
+            res.status(500);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", "Authentication failed: " + e.getMessage());
             return gson.toJson(response);
         }
-
-        res.status(401);
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", false);
-        response.put("error", "Invalid token");
-        return gson.toJson(response);
     }
 
     public String logout(Request req, Response res) {

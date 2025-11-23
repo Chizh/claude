@@ -90,9 +90,23 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 15px;
         }
         .file-item:last-child {
             border-bottom: none;
+        }
+        .file-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+        }
+        .file-preview {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 5px;
+            border: 1px solid #ddd;
         }
         .file-info h3 {
             color: #333;
@@ -144,6 +158,10 @@
         </div>
     </div>
     <script>
+        function isImage(contentType) {
+            return contentType && contentType.startsWith('image/');
+        }
+
         function loadFiles() {
             fetch('/api/files')
                 .then(res => res.json())
@@ -153,18 +171,24 @@
                         filesList.innerHTML = '<div class="empty-state">No files uploaded yet</div>';
                         return;
                     }
-                    filesList.innerHTML = files.map(file => `
-                        <div class="file-item">
-                            <div class="file-info">
-                                <h3>${r"${file.fileName}"}</h3>
-                                <div class="file-meta">
-                                    Size: ${r"${formatFileSize(file.fileSize)}"} |
-                                    Uploaded: ${r"${new Date(file.uploadedAt).toLocaleString()}"}
-                                </div>
-                            </div>
-                            <a href="/api/files/${r"${file.id}"}/download" class="download-btn">Download</a>
-                        </div>
-                    `).join('');
+                    filesList.innerHTML = files.map(file => {
+                        let html = '<div class="file-item"><div class="file-content">';
+
+                        if (isImage(file.contentType)) {
+                            html += '<img src="/api/files/' + file.id + '/view" class="file-preview" alt="' + file.fileName + '">';
+                        }
+
+                        html += '<div class="file-info">';
+                        html += '<h3>' + file.fileName + '</h3>';
+                        html += '<div class="file-meta">';
+                        html += 'Size: ' + formatFileSize(file.fileSize) + ' | ';
+                        html += 'Uploaded: ' + new Date(file.uploadedAt).toLocaleString();
+                        html += '</div></div></div>';
+                        html += '<a href="/api/files/' + file.id + '/download" class="download-btn">Download</a>';
+                        html += '</div>';
+
+                        return html;
+                    }).join('');
                 });
         }
 

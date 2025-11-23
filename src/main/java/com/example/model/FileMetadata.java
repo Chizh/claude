@@ -8,16 +8,18 @@ public class FileMetadata {
     private String fileName;
     private String filePath;
     private long fileSize;
+    private String contentType;
     private LocalDateTime uploadedAt;
 
     public FileMetadata() {
     }
 
-    public FileMetadata(String userId, String fileName, String filePath, long fileSize) {
+    public FileMetadata(String userId, String fileName, String filePath, long fileSize, String contentType) {
         this.userId = userId;
         this.fileName = fileName;
         this.filePath = filePath;
         this.fileSize = fileSize;
+        this.contentType = contentType;
         this.uploadedAt = LocalDateTime.now();
     }
 
@@ -59,6 +61,14 @@ public class FileMetadata {
 
     public void setFileSize(long fileSize) {
         this.fileSize = fileSize;
+    }
+
+    public String getContentType() {
+        return contentType;
+    }
+
+    public void setContentType(String contentType) {
+        this.contentType = contentType;
     }
 
     public LocalDateTime getUploadedAt() {

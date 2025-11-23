@@ -24,7 +24,12 @@ public class GoogleAuth {
                 return idToken.getPayload();
             }
         } catch (Exception e) {
+            System.err.println("=== Google Auth Verify Error ===");
+            System.err.println("Token Length: " + (idTokenString != null ? idTokenString.length() : "null"));
+            System.err.println("Exception: " + e.getClass().getName());
+            System.err.println("Message: " + e.getMessage());
             e.printStackTrace();
+            System.err.println("===============================");
         }
         return null;
     }

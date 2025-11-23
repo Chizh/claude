@@ -20,7 +20,7 @@ public class FileService {
         new File(UPLOAD_DIR).mkdirs();
     }
 
-    public FileMetadata saveFile(String userId, String fileName, InputStream fileContent, long fileSize) {
+    public FileMetadata saveFile(String userId, String fileName, InputStream fileContent, long fileSize, String contentType) {
         try {
             String uniqueFileName = UUID.randomUUID().toString() + "_" + fileName;
             String filePath = UPLOAD_DIR + uniqueFileName;
@@ -33,10 +33,10 @@ public class FileService {
                 }
             }
 
-            FileMetadata metadata = new FileMetadata(userId, fileName, filePath, fileSize);
+            FileMetadata metadata = new FileMetadata(userId, fileName, filePath, fileSize, contentType);
 
-            String sql = "INSERT INTO files (user_id, file_name, file_path, file_size, uploaded_at) " +
-                    "VALUES (:userId, :fileName, :filePath, :fileSize, :uploadedAt)";
+            String sql = "INSERT INTO files (user_id, file_name, file_path, file_size, content_type, uploaded_at) " +
+                    "VALUES (:userId, :fileName, :filePath, :fileSize, :contentType, :uploadedAt)";
 
             try (Connection conn = Database.getSql2o().open()) {
                 long id = (long) conn.createQuery(sql, true)
@@ -44,6 +44,7 @@ public class FileService {
                         .addParameter("fileName", metadata.getFileName())
                         .addParameter("filePath", metadata.getFilePath())
                         .addParameter("fileSize", metadata.getFileSize())
+                        .addParameter("contentType", metadata.getContentType())
                         .addParameter("uploadedAt", metadata.getUploadedAt())
                         .executeUpdate()
                         .getKey();
@@ -52,18 +53,43 @@ public class FileService {
 
             return metadata;
         } catch (Exception e) {
+            System.err.println("=== File Service Save Error ===");
+            System.err.println("User ID: " + userId);
+            System.err.println("File Name: " + fileName);
+            System.err.println("File Size: " + fileSize);
+            System.err.println("Content Type: " + contentType);
+            System.err.println("Exception: " + e.getClass().getName());
+            System.err.println("Message: " + e.getMessage());
             e.printStackTrace();
+            System.err.println("==============================");
             return null;
         }
     }
 
     public List<FileMetadata> getUserFiles(String userId) {
-        String sql = "SELECT * FROM files WHERE user_id = :userId ORDER BY uploaded_at DESC";
+        String sql = "SELECT id, user_id AS userId, file_name AS fileName, " +
+                "file_path AS filePath, file_size AS fileSize, content_type AS contentType, " +
+                "uploaded_at AS uploadedAt " +
+                "FROM files WHERE user_id = :userId ORDER BY uploaded_at DESC";
 
         try (Connection conn = Database.getSql2o().open()) {
             return conn.createQuery(sql)
                     .addParameter("userId", userId)
                     .executeAndFetch(FileMetadata.class);
+        }
+    }
+
+    public FileMetadata getFileMetadata(Long fileId, String userId) {
+        String sql = "SELECT id, user_id AS userId, file_name AS fileName, " +
+                "file_path AS filePath, file_size AS fileSize, content_type AS contentType, " +
+                "uploaded_at AS uploadedAt " +
+                "FROM files WHERE id = :id AND user_id = :userId";
+
+        try (Connection conn = Database.getSql2o().open()) {
+            return conn.createQuery(sql)
+                    .addParameter("id", fileId)
+                    .addParameter("userId", userId)
+                    .executeAndFetchFirst(FileMetadata.class);
         }
     }
 
@@ -80,7 +106,13 @@ public class FileService {
                 return Files.readAllBytes(Paths.get(filePath));
             }
         } catch (Exception e) {
+            System.err.println("=== File Service Get Content Error ===");
+            System.err.println("File ID: " + fileId);
+            System.err.println("User ID: " + userId);
+            System.err.println("Exception: " + e.getClass().getName());
+            System.err.println("Message: " + e.getMessage());
             e.printStackTrace();
+            System.err.println("=====================================");
         }
         return null;
     }

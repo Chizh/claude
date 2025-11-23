@@ -8,17 +8,19 @@ import com.example.viewmodel.FilesViewModel;
 import com.example.viewmodel.LoginViewModel;
 import freemarker.template.Configuration;
 import spark.ModelAndView;
-import spark.Spark;
 import spark.template.freemarker.FreeMarkerEngine;
+
+import static spark.Spark.*;
 
 public class App {
     public static void main(String[] args) {
-        Spark.port(80);
+        port(80);
 
         Database.init();
 
-        Spark.staticFiles.location("/public");
+        staticFiles.location("/public");
 
+        // Configure FreeMarker
         FreeMarkerEngine freeMarkerEngine = new FreeMarkerEngine();
         Configuration freeMarkerConfiguration = new Configuration(Configuration.VERSION_2_3_26);
         freeMarkerConfiguration.setClassForTemplateLoading(App.class, "/templates");
@@ -27,13 +29,27 @@ public class App {
         AuthController authController = new AuthController();
         FileController fileController = new FileController();
 
-        Spark.before((req, res) -> {
+        // Global exception handler
+        exception(Exception.class, (exception, request, response) -> {
+            System.err.println("=== EXCEPTION OCCURRED ===");
+            System.err.println("Request: " + request.requestMethod() + " " + request.pathInfo());
+            System.err.println("Exception: " + exception.getClass().getName());
+            System.err.println("Message: " + exception.getMessage());
+            System.err.println("Stack trace:");
+            exception.printStackTrace();
+            System.err.println("=========================");
+
+            response.status(500);
+            response.body("Internal Server Error: " + exception.getMessage());
+        });
+
+        before((req, res) -> {
             res.header("Access-Control-Allow-Origin", "*");
             res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
             res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
         });
 
-        Spark.get("/", (req, res) -> {
+        get("/", (req, res) -> {
             String userId = req.session().attribute("userId");
             if (userId != null) {
                 res.redirect("/files");
@@ -43,26 +59,30 @@ public class App {
             return freeMarkerEngine.render(new ModelAndView(viewModel, "login.ftl"));
         });
 
-        Spark.get("/files", (req, res) -> {
-            String userId = req.session().attribute("userId");
-            if (userId == null) {
-                res.redirect("/");
-                return "";
+        get(
+            "/files",
+                    (req, res) -> {
+                        String userId = req.session().attribute("userId");
+                        if (userId == null) {
+                            res.redirect("/");
+                            return "";
+                        }
+                        FilesViewModel viewModel = new FilesViewModel(
+                            req.session().attribute("name"),
+                            req.session().attribute("email")
+                        );
+                        return freeMarkerEngine.render(new ModelAndView(viewModel, "files.ftl"));
             }
-            FilesViewModel viewModel = new FilesViewModel(
-                req.session().attribute("name"),
-                req.session().attribute("email")
-            );
-            return freeMarkerEngine.render(new ModelAndView(viewModel, "files.ftl"));
-        });
+        );
 
-        Spark.post("/api/auth/google", authController::verifyToken);
-        Spark.get("/api/auth/logout", authController::logout);
-        Spark.get("/api/auth/client-id", authController::getClientId);
+        post("/api/auth/google", authController::verifyToken);
+        get("/api/auth/logout", authController::logout);
+        get("/api/auth/client-id", authController::getClientId);
 
-        Spark.get("/api/files", fileController::listFiles);
-        Spark.post("/api/files/upload", fileController::uploadFile);
-        Spark.get("/api/files/:id/download", fileController::downloadFile);
+        get("/api/files", fileController::listFiles);
+        post("/api/files/upload", fileController::uploadFile);
+        get("/api/files/:id/view", fileController::viewFile);
+        get("/api/files/:id/download", fileController::downloadFile);
 
         System.out.println("Server started on http://localhost:4567");
     }
